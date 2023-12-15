@@ -7,6 +7,7 @@ import { OpportunityDetails } from "./components/OpportunityDetails";
 import { UserDetails } from "./components/UserDetails";
 import { CreateOpportunity } from "./components/CreateOpportunity";
 import { EditOpportunity } from "./components/EditOpportunity";
+import { EditUser } from "./components/EditUser";
 
 export const ApplicationViews = () => {
   return (
@@ -21,6 +22,7 @@ export const ApplicationViews = () => {
             path="/EditOpportunity/:postId"
             element={<EditOpportunity />}
           />
+          <Route path="/EditUser/:userId" element={<EditUser />} />
           <Route path="/Opportunity/:postId" element={<OpportunityDetails />} />
           <Route path="/Profile/:userId" element={<UserDetails />} />
         </Route>

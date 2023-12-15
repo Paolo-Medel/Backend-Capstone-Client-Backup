@@ -32,7 +32,7 @@ export const AllOpportunities = () => {
     event.preventDefault();
 
     const finalValue = {
-      user: editUser.id,
+      user: editUser.user.id,
       bio: editUser.bio,
       profile_image_url: editUser.profile_image_url,
       cause_area: editUser.cause_area.map((obj) => {
