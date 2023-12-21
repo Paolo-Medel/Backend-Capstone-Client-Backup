@@ -101,7 +101,10 @@ export const OpportunityDetails = () => {
                 return (
                   <div key={obj.id}>
                     <h1>Interested Volunteers</h1>
-                    <div>{obj.user.author_name}</div>
+                    <div className="flex flex-row ">
+                      <div>{obj.user.author_name}</div>
+                      <div>{obj.user.email}</div>
+                    </div>
                   </div>
                 );
               })}
