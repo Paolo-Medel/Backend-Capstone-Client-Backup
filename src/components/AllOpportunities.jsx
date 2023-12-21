@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import {
   DeleteOpportunity,
   GetOpportunities,
-  RetrieveOpportunities,
 } from "../services/opportunitiesService";
 import { NavLink } from "react-router-dom";
 import { RetrieveUser } from "../services/userService";
@@ -10,7 +9,8 @@ import { RetrieveUser } from "../services/userService";
 export const AllOpportunities = () => {
   const [posts, setPosts] = useState();
   const [user, setUser] = useState({});
-  const [editUser, setEditUser] = useState({});
+  const [chosenFavorite, setChosenFavorite] = useState(new Set());
+  const [chosenCauses, updateChosen] = useState(new Set());
 
   useEffect(() => {
     GetOpportunities().then((data) => {
@@ -19,30 +19,33 @@ export const AllOpportunities = () => {
       );
       setPosts(approvedOpportunities);
     });
+
     const volunteer_object = JSON.parse(
       localStorage.getItem("volunteer_token")
     );
+
     RetrieveUser(volunteer_object.volunteer_user_id).then((obj) => {
       setUser(obj);
-      setEditUser(obj);
+      let favorite_ids = [];
+      const favorites = obj.favorite;
+      favorites.map((obj) => favorite_ids.push(obj.id));
+      setChosenFavorite(new Set(favorite_ids));
+
+      let cause_area_id = [];
+      const cause_areas = obj.cause_area;
+      cause_areas.map((obj) => cause_area_id.push(obj.id));
+      updateChosen(new Set(cause_area_id));
     });
   }, []);
 
-  const addFavorite = async (event) => {
-    event.preventDefault();
+  const handleFavorite = (post) => {
+    // event.preventDefault();
+    const copy = new Set(chosenFavorite);
+    copy.has(post.id) ? copy.delete(post.id) : copy.add(post.id);
+    setChosenFavorite(copy);
+  };
 
-    const finalValue = {
-      user: editUser.user.id,
-      bio: editUser.bio,
-      profile_image_url: editUser.profile_image_url,
-      cause_area: editUser.cause_area.map((obj) => {
-        return obj.id;
-      }),
-      favorite: editUser.favorite.map((obj) => {
-        return obj.id;
-      }),
-    };
-
+  const addFavorite = async () => {
     await fetch(
       `http://localhost:8000/volunteers/${
         JSON.parse(localStorage.getItem("volunteer_token")).volunteer_user_id
@@ -55,7 +58,12 @@ export const AllOpportunities = () => {
           }`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(finalValue),
+        body: JSON.stringify({
+          ...user,
+          favorite: Array.from(chosenFavorite),
+          cause_area: Array.from(chosenCauses),
+          user: user.user.id,
+        }),
       }
     );
   };
@@ -69,7 +77,15 @@ export const AllOpportunities = () => {
           </NavLink>
         ) : (
           <div>
-            <button className="btn-edit">Filter by Cause Area</button>
+            <button
+              className="btn-edit"
+              onClick={async () => {
+                await addFavorite();
+                window.alert("Favorites added to Profile Page!");
+              }}
+            >
+              Add Favorites
+            </button>
           </div>
         )}
       </div>
@@ -110,24 +126,18 @@ export const AllOpportunities = () => {
                 {user.is_business ? (
                   <></>
                 ) : (
-                  <button
-                    className="btn-edit"
-                    value={post.id}
-                    onClick={async (event) => {
-                      const copy = { ...editUser };
-                      copy.favorite.push(
-                        await RetrieveOpportunities(
-                          parseInt(event.target.value)
-                        ).then((obj) => {
-                          return obj;
-                        })
-                      );
-                      setEditUser(copy);
-                      addFavorite(event);
-                    }}
-                  >
-                    Favorite
-                  </button>
+                  <fieldset>
+                    <input
+                      className="btn-edit"
+                      checked={chosenFavorite.has(post.id)}
+                      value={post.id}
+                      type="checkbox"
+                      onChange={() => {
+                        handleFavorite(post);
+                      }}
+                    />
+                    <label>Favorite</label>
+                  </fieldset>
                 )}
               </div>
             </div>

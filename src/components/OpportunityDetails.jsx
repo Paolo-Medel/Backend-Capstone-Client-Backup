@@ -9,13 +9,25 @@ import { RetrieveUser } from "../services/userService";
 export const OpportunityDetails = () => {
   const [opportunity, setOpportunity] = useState();
   const [user, setUser] = useState({});
-  const [editUser, setEditUser] = useState({});
+  const [chosenCauses, setChosenCauses] = useState();
+  const [interestedVolunteer, setInterestedVolunteer] = useState(new Set());
   const { postId } = useParams();
   const navigate = useNavigate();
 
   useEffect(() => {
     RetrieveOpportunities(postId).then((obj) => {
       setOpportunity(obj);
+      let interested_array = [];
+      const interested = obj.interested_volunteers;
+      interested.map((obj) => {
+        interested_array.push(obj.id);
+      });
+      setInterestedVolunteer(new Set(interested_array));
+
+      let cause_area_id = [];
+      const cause_areas = obj.cause_area;
+      cause_areas.map((obj) => cause_area_id.push(obj.id));
+      setChosenCauses(new Set(cause_area_id));
     });
 
     const volunteer_object = JSON.parse(
@@ -23,39 +35,33 @@ export const OpportunityDetails = () => {
     );
     RetrieveUser(volunteer_object.volunteer_user_id).then((obj) => {
       setUser(obj);
-      setEditUser(obj);
     });
   }, []);
 
-  const addFavorite = async (event) => {
-    event.preventDefault();
+  const handleVolunteer = () => {
+    // event.preventDefault();
+    const copy = new Set(interestedVolunteer);
+    copy.has(user.id) ? copy.delete(user.id) : copy.add(user.id);
+    setInterestedVolunteer(copy);
+  };
 
-    const finalValue = {
-      user: editUser.user.id,
-      bio: editUser.bio,
-      profile_image_url: editUser.profile_image_url,
-      cause_area: editUser.cause_area.map((obj) => {
-        return obj.id;
+  const handleSubmit = async () => {
+    await fetch(`http://localhost:8000/posts/${postId}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Token ${
+          JSON.parse(localStorage.getItem("volunteer_token")).token
+        }`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ...opportunity,
+        cause_area: Array.from(chosenCauses),
+        user: opportunity.user.id,
+        interested_volunteers: Array.from(interestedVolunteer),
       }),
-      favorite: editUser.favorite.map((obj) => {
-        return obj.id;
-      }),
-    };
-    await fetch(
-      `http://localhost:8000/volunteers/${
-        JSON.parse(localStorage.getItem("volunteer_token")).volunteer_user_id
-      }`,
-      {
-        method: "PUT",
-        headers: {
-          Authorization: `Token ${
-            JSON.parse(localStorage.getItem("volunteer_token")).token
-          }`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(finalValue),
-      }
-    );
+    });
+    navigate(`/`);
   };
 
   return (
@@ -75,20 +81,32 @@ export const OpportunityDetails = () => {
       </div>
       <div>
         {user.is_business && opportunity?.is_owner ? (
-          <div className="flex">
-            <NavLink to={`/EditOpportunity/${opportunity?.id}`}>
-              <button className="btn-edit">Edit</button>
-            </NavLink>
-            <button
-              className="btn-edit"
-              onClick={() => {
-                DeleteOpportunity(opportunity?.id);
-                navigate(-1);
-              }}
-            >
-              Delete
-            </button>
-          </div>
+          <>
+            <div className="flex">
+              <NavLink to={`/EditOpportunity/${opportunity?.id}`}>
+                <button className="btn-edit">Edit</button>
+              </NavLink>
+              <button
+                className="btn-edit"
+                onClick={() => {
+                  DeleteOpportunity(opportunity?.id);
+                  navigate(-1);
+                }}
+              >
+                Delete
+              </button>
+            </div>
+            <div>
+              {opportunity.interested_volunteers?.map((obj) => {
+                return (
+                  <div key={obj.id}>
+                    <h1>Interested Volunteers</h1>
+                    <div>{obj.user.author_name}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         ) : (
           <></>
         )}
@@ -97,31 +115,29 @@ export const OpportunityDetails = () => {
         <></>
       ) : (
         <>
+          <fieldset>
+            <input
+              className="btn-edit"
+              type="checkbox"
+              onChange={() => {
+                handleVolunteer();
+              }}
+              checked={interestedVolunteer.has(user.id)}
+            />
+            <label>Are you Interested in Volunteering?</label>
+          </fieldset>
           <button
             className="btn-edit"
-            value={opportunity?.id}
-            onClick={async (event) => {
-              const copy = { ...editUser };
-              copy.favorite.push(
-                await RetrieveOpportunities(parseInt(event.target.value)).then(
-                  (obj) => {
-                    return obj;
-                  }
-                )
-              );
-              setEditUser(copy);
-              addFavorite(event);
+            onClick={async () => {
+              await handleSubmit();
             }}
           >
-            Favorite
+            Send Contact info to Company!
           </button>
-          <button className="btn-edit">Express Interest</button>
         </>
       )}
       <div className="flex flex-col">
-        {user.is_business &&
-        opportunity?.is_owner &&
-        opportunity?.interested_volunteers?.length >= 1 ? (
+        {opportunity?.is_owner === true ? (
           opportunity.interest_volunteers?.map((obj) => {
             return (
               <>
@@ -137,3 +153,6 @@ export const OpportunityDetails = () => {
     </div>
   );
 };
+
+// &&
+//         opportunity?.interested_volunteers?.length >= 1
